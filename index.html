@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>krpano - 03_TestSequence.0034</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	<meta name="mobile-web-app-capable" content="yes" />
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+	<meta http-equiv="x-ua-compatible" content="IE=edge" />
+  <style>
+		html { height:100%; }
+		body { height:100%; overflow:hidden; margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; font-size:16px; background-color:#000000; }
+    #app {
+      width: 100%;
+      height: 100vh;
+    }
+    .addmenuitems {
+      position: absolute;
+      z-index: 100;
+      top: 10px;
+      left: 10px;
+      color: red;
+    }
+    .q-page-container {
+      height: 100vh;
+    }
+    .mainscene {
+      background-color: green;
+    }
+    .selected {
+      background-color: green;
+    }
+    .filters {
+      position: fixed;
+      z-index: 100;
+      left: 10px;
+      top: 10vh;
+    }
+    .filterinside {
+      position: relative;
+    }
+    .selfilter {
+      opacity: 0.6;
+      margin-right: 25px;
+    }
+    .q-drawer .q-card__section--vert {
+      padding: 0px;
+    }
+    .shopping-cart {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+    }
+    .products {
+      position: fixed;
+      bottom: 10px;
+      left: 0px;
+      width: 100vw;
+      z-index: 10;
+      display:none!important;
+    }
+    .smallbtns {
+      position: fixed;
+      z-index: 10;
+      bottom: 10px;
+      right: 10px;
+    }
+    .q-item__section--side {
+        color: white!important;
+        font-size: 1.2em;
+        font-weight: 600;
+    }
+    .cscart {
+      width: 300px;
+    background-color: #0404045b;
+    color: white;
+    }
+    .q-item__label--caption {
+      color: #ff9800!important;
+    }
+    [v-cloak] {
+     display: none;
+    }
+    .q-item__section--main {
+      font-size: 1.2em!important;
+    }
+    .q-fab__label {
+      font-size: 1.2em;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet" type="text/css">
+  <link href="https://use.fontawesome.com/releases/v5.15.3/css/all.css" rel="stylesheet" type="text/css">
+  <link href="https://cdn.jsdelivr.net/npm/quasar@1.12.13/dist/quasar.min.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+
+<script src="tour.js"></script>
+<div id="app">
+  <q-layout view="hHh lpR fFf" v-cloak>
+
+    <q-drawer v-model="left" side="left" elevated dark>
+      <!-- drawer content -->
+      <div class="fit">
+        <q-chip class="bg-red" label="Please select main tour scenes first" v-if="maindata.scenes.filter(x => x.picked).length < 1" clickable @click="maintourscenesdialog = true"></q-chip>
+        <q-list bordered padding>
+          <q-item-label header>Scenes</q-item-label>
+          <q-separator color="white" spaced></q-separator>
+          <q-item clickable v-ripple v-for="scene in maindata.scenes" @click="loadscene(scene.name)" v-bind:class="{selected: scene.name === currentscenename}">
+            <q-item-section>
+              <q-img
+              :src="scene.thumburl"
+              :ratio="16/9"
+              spinner-color="primary"
+              spinner-size="82px"
+              style="max-width: 100px;"
+            >
+            <q-tooltip>
+              <img :src="scene.thumburl" alt="">
+            </q-tooltip>
+            </q-img>
+            </q-item-section>
+            <q-item-section>{{scene.title}}</q-item-section>
+          </q-item>
+        </q-list>
+      </div>
+    </q-drawer>
+
+    <q-drawer dark v-model="right" side="right" overlay elevated>
+      <!-- drawer content -->
+      <div class="fit scroll q-pa-sm" v-if="currentscene">
+
+        <div class="text-center">Current scene: {{currentscene.title}}</div>
+        <hr>
+        <div class="">
+          <p>This is a variation scene</p>
+          <div class="row">
+            Choose connected main scene:
+          </div>
+          <div class="row">
+            <q-select dark v-model="currentscene.connectedscene" :options="maindatascenes" label="Standard" filled emit-value style="width: 100%; padding: 10px;"></q-select>
+          </div>
+          <div class="row q-pa-md">
+            <q-card dark bordered v-for="incoming in incomingconnections" v-bind:key="incoming.name">
+              <q-card-section>
+                <div>Incoming view from {{incoming.scene}}</div>
+                <div class="text-subtitle2" v-if="incoming.targetview" style="display: none;">ath: {{incoming.targetview.ath}}, atv: {{incoming.targetview.atv}}, fov: {{incoming.targetview.fov}}</div>
+              </q-card-section>
+              <q-card-section>
+                <q-btn color="primary" icon="fas fa-street-view" @click="settargetview(incoming)">
+                  <q-tooltip>
+                    Set current view as default for this connection
+                  </q-tooltip>
+                </q-btn>
+              </q-card-section>
+            </q-card>
+          </div>
+          <q-card dark class="my-card">
+            <q-card-section>
+              <div class="text-h6">Variations</div>
+              <div class="text-subtitle2">of the scene</div>
+            </q-card-section>
+            <q-card-section>
+              <div class="row q-pa-md">
+                <q-chip removable @remove="removetag(variation)" :label="maindata.variations.filter(x => x.id === variation)[0].title" v-for="variation in currentscene.variations" :key="variation"></q-chip>
+              </div>
+            </q-card-section>
+            <q-card-section>
+              <q-btn color="primary" label="Pick a variation" @click="choosevariation" no-caps></q-btn>
+            </q-card-section>
+          </q-card>
+        </div>
+        <div>
+          <div class="text-h6">Scene Hotspots</div>
+          <q-list dark bordered>
+            <q-expansion-item
+              expand-separator
+              icon="chat"
+              label="Audio Settings"
+              caption="Click to expand"
+              group="someothergroup"
+              v-for="hotspot in currenthotspots"
+              v-bind:key="hotspot.name"
+              v-bind:class="{ 'selecteditem': hotspot.name === currenthotspot.name }"
+              @click="clickhotspot(hotspot.name)"
+              class="text-white"
+            >
+              <template v-slot:header>
+                <q-item-section avatar>
+                  <img :src="hotspot.url" width="50px"/>
+                </q-item-section>
+
+                <q-item-section>
+                  <q-item-label>{{hotspot.name}}</q-item-label>
+                  <q-item-label caption class="tiny">h: {{hotspot.ath}}, <br> v: {{hotspot.atv}}</q-item-label>
+                  <q-item-label>
+                    <q-icon color="red" style="font-size: 2em; margin-left: 10px;" name="fas fa-trash-alt" @click="deletehotspot(hotspot)">
+                    <q-tooltip>
+                      remove hotspot
+                    </q-tooltip>
+                  </q-icon>
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side></q-item-section>
+              </template>
+              <q-card dark bordered>
+                <q-card-section>
+                  <div class="row">
+                    <div class="col-6 flex flex-center">
+                      <q-input dark flat outlined filled v-model="hotspot.url" type="text" label="change file name" no-caps style="width: 100%;"></q-input>
+                    </div>
+                    <div class="col-6 flex flex-center">
+                      <q-btn color="green" outline round icon="fas fa-check" @click="changethumb"></q-btn>
+                    </div>
+                  </div>
+                  <div style="margin-top: 10px; margin-bottom: 10px;" class="row">
+                     <div class="col">
+                       <q-input
+                          v-model.number="hotspot.width"
+                          type="number"
+                          dark
+                          filled
+                          style="max-width: 150px"
+                          label="width"
+                          @input="sethotspotwidth(hotspot.name, hotspot.width)"
+                        ></q-input>
+                     </div>
+                     <div class="col">
+                       <q-input
+                          v-model.number="hotspot.height"
+                          dark
+                          type="number"
+                          filled
+                          label="height"
+                          style="max-width: 150px"
+                          @input="sethotspotheight(hotspot.name, hotspot.height)"
+                          ></q-input>
+                     </div>
+                   </div>
+                   <div class="row">
+                     <div class="col-2">Rx:</div>
+                     <div class="col-10">
+                        <q-slider
+                          v-model="hotspot.rx"
+                          :min="-60"
+                         :max="60"
+                         :step="1"
+                          labeleditor
+                          color="light-green"
+                          @input="transform('x', hotspot.rx)"
+                        ></q-slider>
+                     </div>
+                   </div>
+                   <div class="row">
+                    <div class="col-2">Ry:</div>
+                    <div class="col-10">
+                       <q-slider
+                         v-model="hotspot.ry"
+                         :min="-60"
+                         :max="60"
+                         :step="1"
+                         label
+                         color="light-green"
+                         @input="transform('y', hotspot.ry)"
+                       ></q-slider>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-2">Rz:</div>
+                    <div class="col-10">
+                       <q-slider
+                         v-model="hotspot.rz"
+                         :min="-60"
+                         :max="60"
+                         :step="1"
+                         label
+                         color="light-green"
+                         @input="transform('z', hotspot.rz)"
+                       ></q-slider>
+                    </div>
+                  </div>
+                </q-card-section>
+                <q-card-section>
+                  <div class="row">
+                    <div class="col-4">Type</div>
+                    <div class="col-8">
+                      <q-select
+                        outlined
+                        dark
+                        v-model="hotspot.type"
+                        :options="hotoptions"
+                        label="Select Type"
+                      />
+                    </div>
+                  </div>
+                  <div v-if="hotspot.type === 'directional'">
+                    Connection to:
+                    <q-select dark v-model="hotspot.connectionto" :options="maindatascenes" label="Standard" filled emit-value style="width: 100%; padding: 10px;"></q-select>
+                    <!-- <q-select
+                      filled
+                      v-model="hotspot.connectionto"
+                      :options="calculatedscenes"
+                      option-value="scene"
+                      label="Scene"
+                      color="teal"
+                      clearable
+                      options-selected-class="text-deep-orange"
+                    >
+                      <template v-slot:option="scope">
+                        <q-item v-bind="scope.itemProps" v-on="scope.itemEvents">
+                          <q-item-section avatar>
+                            <img style="width: 100px;" :src="scope.opt.url" alt />
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label v-html="scope.opt.title" />
+                          </q-item-section>
+                        </q-item>
+                      </template>
+                    </q-select> -->
+                    <div class="row" v-if="hotspot.connectionto">
+                      <div class="col">
+                        <img style="width: 100px;" :src="hotspot.connectionto.url" alt />
+                      </div>
+                      <div class="col">{{hotspot.connectionto.title}}</div>
+                    </div>
+                    <div class="row" v-if="hotspot.connectionto.url">
+                      <div class="col-4 flex flexcenter"> Auto create thumb ?</div>
+                      <div class="col-8 flex flexcenter">
+                        <q-toggle v-model="hotspot.auto" color="green" />
+                      </div>
+                    </div>
+                  </div>
+                  <div v-if="hotspot.type === 'information'">
+                    <div class="row">Information hotspot</div>
+                    <div class="row">
+                        <q-list style="width:100%;">
+                          <q-editor
+                          dark
+                            v-model="hotspot.content"
+                            :toolbar="[
+                              ['left', 'center', 'right', 'justify', 'bold', 'underline'],
+                              ['upload']
+                            ]"
+                          ></q-editor>
+                        </q-list>
+                    </div>
+                  </div>
+                </q-card-section>
+              </q-card>
+            </q-expansion-item>
+          </q-list>
+        </div>
+      </div>
+    </q-drawer>
+
+    <q-page-container>
+      <div id="pano" style="width:100%;height:100%; position: relative;" v-on:dblclick="addahotspot()">
+        <noscript><table style="width:100%;height:100%;"><tr style="vertical-align:middle;"><td><div style="text-align:center;">ERROR:<br/><br/>Javascript not activated<br/><br/></div></td></tr></table></noscript>
+        <div class="addmenuitems" v-if="editormode">
+          <div class="row">
+            <div class="col flex flex-center q-pa-md"><q-icon color="white" size="md" name="fas fa-bars" @click="left = !left">
+              <q-tooltip>
+                Open scenes
+              </q-tooltip>
+            </q-icon></div>
+            <!-- <div class="col flex flex-center">Editor mode</div> -->
+            <div class="col flex flex-center q-pa-md">
+              <q-btn color="primary" icon="fas fa-list-ul" @click="maintourscenesdialog = true" no-caps>
+                <q-tooltip>
+                  Main tour selection
+                </q-tooltip>
+              </q-btn>
+            </div>
+            <div class="col flex flex-center q-pa-md">
+              <q-btn round flat outline size="md" color="primary" icon="fas fa-filter" @click="variationsdialog = true" no-caps>
+                <q-tooltip>
+                  Variations and filters
+                </q-tooltip>
+              </q-btn>
+            </div>
+            <div class="col flex flex-center q-pa-md">
+              <q-btn color="primary" label="Save" @click="savejson()" no-caps></q-btn>
+            </div>
+          </div>
+        </div>
+        <div class="smallbtns" v-if="!vrmode">
+          <div class="row">
+            <div class="col q-pa-sm">
+              <q-btn round outline color="black" :icon="isfullscreen ? 'fas fa-compress': 'fas fa-expand'" @click="fullscreen()">
+                <q-tooltip content-class="bg-purple">
+                  <span v-if="isfullscreen">Exit fullscreen</span>
+                  <span v-else>Enter fullscreen</span>
+                </q-tooltip>
+              </q-btn>
+            </div>
+            <div class="col q-pa-sm">
+              <q-btn round outline color="black" icon="fas fa-glasses" @click="entervr()">
+                <q-tooltip content-class="bg-purple">
+                  Enter VR
+                </q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+        </div>
+        <div class="products flex flex-center" style="pointer-events: none;" v-if="!vrmode">
+          <div class="row" style="pointer-events: all!important;">
+            <div class="col" v-for="product in products" v-bind:key="product.id">
+              <q-btn :disabled="shopitems.filter(x => x.id === product.id && x.toplevel === product.toplevel).length > 0" :color="product.type === 'color' ? product.color: 'primary'" icon="fas fa-cart-plus" :label="product.title + ' ' + this.maindata.toplevel.filter(x => x.id === product.toplevel)[0].title" @click="addproduct(product)" no-caps v-bind:style="{background: product.type === 'color' ? product.color: 'primary'}">
+                <q-tooltip :content-class="shopitems.filter(x => x.id === product.id && x.toplevel === product.toplevel).length > 0 ? 'bg-red': 'bg-green'">
+                  <div v-if="shopitems.filter(x => x.id === product.id && x.toplevel === product.toplevel).length > 0" >Item already in your cart</div>
+                  <div v-else>Add item to your cart</div>
+                </q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+        </div>
+        <div class="shopping-cart" v-if="!vrmode">
+          <div style="display: none;">
+          <div class="row" style="position:relative; width: auto;">
+            <q-badge color="black" :label="shopitems.length - 1" floating></q-badge>
+            <q-btn flat round color="black" size="lg" icon="fas fa-cart-arrow-down" @click="cart = !cart" style="position: relative; margin-right: 0px; margin-left: auto;">
+            <q-tooltip content-class="bg-primary">
+              Show Cart
+            </q-tooltip>
+            <q-badge outline flat color="white" :label="shopitems.length - 1" floating></q-badge>
+            </q-btn>
+          </div>
+          <div class="row">
+            <q-slide-transition>
+              <div v-show="cart" class="cscart">
+                <q-list bordered>
+                  <q-item v-for="(shopitem, index) in shopitems" :key="index">
+                    <q-item-section>
+                      <q-item-label>{{shopitem.title}}</q-item-label>
+                      <q-item-label caption v-if="shopitem.id !== 999999">{{this.maindata.toplevel.filter(x => x.id === shopitem.toplevel)[0].title}}</q-item-label>
+                      <!-- <q-item-label caption v-if="shopitem.id !== 999999"><q-chip dense class="bg-green text-white" :label="shopitem.pricetype"></q-chip></q-item-label> -->
+                    </q-item-section>
+                    <q-item-section v-if="index !== 0">
+                      <q-icon color="red" name="fas fa-times" style="cursor: pointer;" @click="shopitems.splice(index, 1)">
+                        <q-tooltip>
+                          Remove item from cart
+                        </q-tooltip>
+                      </q-icon>
+                    </q-item-section>
+                    <q-item-section side>{{shopitem.price}}</q-item-section>
+                  </q-item>
+                  <q-separator spaced inset horizontal dark></q-separator>
+                  <q-item>
+                    <q-item-section>Total</q-item-section>
+                    <q-item-section side>{{shopitems.map(x => (Number(x.price))).reduce((a, b) => a + b, 0)}}</q-item-section>
+                  </q-item>
+                </q-list>
+            </q-slide-transition>
+          </div>
+        </div>
+        </div>
+        <div class="filters" v-if="!vrmode">
+          <div class="filterinside">
+            <div v-for="level in toplevelcalc" :key="level.id" class="q-ma-md">
+              <q-fab :ref="'fab' + level.id" square flat outline color="black" :label="level.title" :icon="level.icon" direction="right" v-if="advancedchecker(level.id)" @show="closeall(level.id)">
+                <div v-for="variation in variationlevelcalc(level.id)" :key="variation.id" v-bind:class="{selfilter: currentscene.variations.includes(variation.id)}">
+                  <q-fab-action round v-if="variation.type === 'texture'" external-label label-position="top" :label="variation.title"  @click="clicker(variation)" v-bind:style="{background: 'url(textures/' + variation.color + ')'}"></q-fab-action>
+                  <q-fab-action external-label label-position="top" :label="variation.title" :outline="variation.type === 'icon'" :color="variation.type === 'icon' ? 'black': variation.color" :icon="variation.type === 'icon' ? variation.icon: null" @click="clicker(variation)" v-bind:style="{background: variation.type === 'icon' ? 'null': variation.color}" v-else></q-fab-action>
+                </div>
+              </q-fab>
+            </div>
+          <!-- <q-splitter
+            v-model="splitterModel"
+            style="height: 80vh;"
+          >
+      
+            <template v-slot:before>
+              <q-tabs
+                v-model="tab"
+                vertical
+                class="text-teal"
+              >
+                <q-tab :name="level.id" :icon="level.icon" :label="level.title" v-for="level in toplevelcalc" :key="level.id"></q-tab>
+              </q-tabs>
+            </template>
+      
+            <template v-slot:after>
+              <q-tab-panels
+                v-model="tab"
+                animated
+                swipeable
+                vertical
+                transition-prev="jump-up"
+                transition-next="jump-up"
+              >
+                <q-tab-panel :name="level.id" v-for="level in toplevelcalc" :key="level.id">
+                  <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Quis praesentium cumque magnam odio iure quidem, quod illum numquam possimus obcaecati commodi minima assumenda consectetur culpa fuga nulla ullam. In, libero.</p>
+                  <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Quis praesentium cumque magnam odio iure quidem, quod illum numquam possimus obcaecati commodi minima assumenda consectetur culpa fuga nulla ullam. In, libero.</p>
+                </q-tab-panel>
+      
+                <q-tab-panel name="alarms">
+                  <div class="text-h4 q-mb-md">Alarms</div>
+                  <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Quis praesentium cumque magnam odio iure quidem, quod illum numquam possimus obcaecati commodi minima assumenda consectetur culpa fuga nulla ullam. In, libero.</p>
+                  <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Quis praesentium cumque magnam odio iure quidem, quod illum numquam possimus obcaecati commodi minima assumenda consectetur culpa fuga nulla ullam. In, libero.</p>
+                </q-tab-panel>
+      
+                <q-tab-panel name="movies">
+                  <div class="text-h4 q-mb-md">Movies</div>
+                  <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Quis praesentium cumque magnam odio iure quidem, quod illum numquam possimus obcaecati commodi minima assumenda consectetur culpa fuga nulla ullam. In, libero.</p>
+                  <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Quis praesentium cumque magnam odio iure quidem, quod illum numquam possimus obcaecati commodi minima assumenda consectetur culpa fuga nulla ullam. In, libero.</p>
+                  <p>Lorem ipsum dolor sit, amet consectetur adipisicing elit. Quis praesentium cumque magnam odio iure quidem, quod illum numquam possimus obcaecati commodi minima assumenda consectetur culpa fuga nulla ullam. In, libero.</p>
+                </q-tab-panel>
+              </q-tab-panels>
+            </template>
+      
+          </q-splitter> -->
+        </div>
+        </div>
+        <q-dialog v-model="editormode" seamless position="top">
+          <q-card dark style="width: 350px">
+    
+            <q-card-section class="row items-center no-wrap">
+              <div v-if="maindata.scenes.length > 0">
+                <div class="text-weight-bold">{{currentscene.title}}</div>
+                <div class="text-green" v-if="currentscene.picked">Main tour scene</div>
+                <div class="text-red" v-else>Variation scene</div>
+              </div>
+    
+              <q-space></q-space>
+    
+              <q-btn flat :color="currentscene.starth ? 'green': 'red'" round icon="far fa-eye" @click="setdefaultview()" v-if="maindata.scenes.length > 0 && currentscene">
+                <q-tooltip content-class="bg-green" v-if="currentscene && currentscene.starth">
+                  Default view is set
+                </q-tooltip>
+                <q-tooltip content-class="bg-red" v-else>
+                  Set current view as default
+                </q-tooltip>
+              </q-btn>
+              <q-btn flat round icon="fas fa-plug" @click="right = !right">
+                <q-tooltip content-class="bg-green">
+                  toggle settings sidebar
+                </q-tooltip>
+              </q-btn>
+            </q-card-section>
+          </q-card>
+        </q-dialog>
+        <q-dialog dark v-model="maintourscenesdialog">
+          <q-card dark style="min-width: 450px">
+    
+            <q-card-section class="row items-center no-wrap">
+              <q-list bordered style="width: 100%;">
+                <q-item-label header>Pick scenes for main tour</q-item-label>
+                <q-separator color="white" spaced></q-separator>
+                <q-scroll-area style="width: 100%; height: 60vh;">
+                  <q-item tag="label" v-ripple v-for="scene in maindata.scenes" :key="scene.name" v-bind:class="{ mainscene: scene.picked }">
+                    <q-item-section>
+                      <q-img
+                        :src="scene.thumburl"
+                        :ratio="16/9"
+                        spinner-color="primary"
+                        spinner-size="40px"
+                        style="height: 80px;"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{scene.title}}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side >
+                      <q-toggle color="blue" v-model="scene.picked"></q-toggle>
+                    </q-item-section>
+                  </q-item>
+                </q-scroll-area>
+              </q-list>
+            </q-card-section>
+          </q-card>
+        </q-dialog>
+        <q-dialog
+          v-model="variationsdialog"
+          persistent
+          maximized
+          transition-show="slide-up"
+          transition-hide="slide-down"
+        >
+          <q-card class="text-white">
+            <q-bar class="bg-primary">
+              <q-space></q-space>
+              <q-btn dense flat icon="far fa-window-close" v-close-popup>
+                <q-tooltip content-class="bg-white text-primary">Close</q-tooltip>
+              </q-btn>
+            </q-bar>
+            <q-card-section class="text-h5 text-black">
+              <q-input flat filledv-model="maindata.baseprice" type="number" label="Base price" />
+            </q-card-section>
+            <q-card-section>
+              <div class="text-h5 text-black">Edit variations menu</div>
+            </q-card-section>
+
+            <q-card-section class="q-pt-none text-black">
+              <div class="row fit">
+                <div class="col-5">
+                  <div class="fit q-pa-md">
+                    <div class="row text-h6">Top level menu</div>
+                    <div class="fit">
+                      <q-list bordered>
+                        <draggable
+                          :list="toplevelcalc"
+                          class="list-group"
+                          ghost-class="ghost"
+                          @end="reorder"
+                        >
+                          <q-expansion-item
+                            expand-separator
+                            :icon="value.icon"
+                            :label="value.title"
+                            caption="Top level"
+                            v-for="(value, index) in toplevelcalc"
+                            v-bind:key="index"
+                            @click="newtoplevel = value"
+                          >
+                            <q-card>
+                              <q-card-section>
+                                <div class="fit">
+                                  <div class="row">
+                                    <div class="col flex flex-center">
+                                      <q-icon size="lg" :name="value.icon"></q-icon>
+                                    </div>
+                                    <div class="col flex flex-center">
+                                      <q-btn color="red" icon="far fa-trash-alt" @click="deletetoplevel(value.id)">
+                                        <q-tooltip>
+                                          Delete top level item
+                                        </q-tooltip>
+                                      </q-btn>
+                                    </div>
+                                  </div>
+                                </div>
+                              </q-card-section>
+                            </q-card>
+                          </q-expansion-item>
+                        </draggable>
+                        
+                      </q-list>
+                      <div class="q-pa-md bordered">
+                        <q-input v-model="newtoplevel.title" type="text" label="New top level title"></q-input>
+                      </div>
+                      <div class="q-pa-md bordered">
+                        <q-input v-model="newtoplevel.icon" type="text" label="font awesome code"></q-input>
+                      </div>
+                      <div class="row q-pa-md">
+                        <q-btn color="primary" label="Save item" @click="addtoplevel" no-caps></q-btn>
+                        <q-btn color="primary" label="Clear" @click="newtoplevel = JSON.parse(JSON.stringify(newtopleveldefault))" no-caps style=" margin-left: 20px;"></q-btn>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-2 flex flex-center">
+                  <q-separator vertical inset style="min-height: 50vh; background: rgb(255 255 255);"></q-separator>
+                </div>
+                
+                <div class="col-5">
+                  <div class="fit q-pa-md">
+                    <div class="row text-h6">Variations</div>
+                    <div class="fit">
+                      <q-list bordered>
+                        <q-expansion-item
+                          expand-separator
+                          :icon="variation.icon"
+                          :label="variation.title"
+                          caption="Top level"
+                          v-for="(variation, index) in maindata.variations"
+                          v-bind:key="index"
+                          @click="newvariation = variation"
+                        >
+                            <q-card>
+                              <q-card-section>
+                                {{variation.title}} <span class="smalltext">{{maindata.toplevel.filter(x => x.id === variation.toplevel)[0].title}}</span>
+                              </q-card-section>
+                              <q-card-section>
+                                Belongs to: {{maindata.toplevel.filter(x => x.id === variation.toplevel)[0].title}} Top level item
+                              </q-card-section>
+                              <div class="col flex flex-center">
+                                <q-btn color="red" icon="far fa-trash-alt" @click="deletevariation(variation.id)">
+                                  <q-tooltip>
+                                    Delete top level item
+                                  </q-tooltip>
+                                </q-btn>
+                              </div>
+                            </q-card>
+                        </q-expansion-item>
+                      </q-list>
+                      <div class="q-pa-md bordered">
+                        <q-input v-model="newvariation.title" type="text" label="New Variation title"></q-input>
+                      </div>
+                      <div class="q-pa-md bordered">
+                        <q-select v-model="newvariation.type" :options="['icon', 'color', 'texture']" label="Pick a type" filled />
+                      </div>
+                      <div class="q-pa-md bordered" v-if="newvariation.type === 'icon'">
+                        <q-input v-model="newvariation.icon" type="text" label="font awesome code"></q-input>
+                      </div>
+                      <div class="q-pa-md bordered" v-else-if="newvariation.type === 'texture'">
+                        <q-input v-model="newvariation.color" type="text" label="name of the texture (.png)"></q-input>
+                      </div>
+                      <div class="q-pa-md bordered" v-else>
+                        <q-input v-model="newvariation.color" type="text" label="color hex code"></q-input>
+                      </div>
+                      <div class="q-pa-md bordered">
+                        <q-select outlined v-model="newvariation.toplevel" :options="calctoplevel" label="top level item" emit-value>
+                          <template v-slot:option="scope">
+                            <q-item
+                              v-bind="scope.itemProps"
+                              v-on="scope.itemEvents"
+                            >
+                              <q-item-section>
+                                <q-item-label v-html="scope.opt.label" style="color: black;"/>
+                              </q-item-section>
+                            </q-item>
+                          </template>
+                        </q-select>
+                      </div>
+                      <div class="q-pa-md bordered">
+                        <q-input v-model="newvariation.price" type="number" label="price"></q-input>
+                      </div>
+                      <div class="q-pa-md bordered" v-if="newvariation.price">
+                        <q-select v-model="newvariation.pricetype" :options="['variation', 'addon']" label="Product type" filled />
+                      </div>
+                      <div class="row q-pa-md">
+                        <q-btn color="primary" :label="newvariation.id ? 'Update item': 'Save item'" @click="addvariation" no-caps></q-btn>
+                        <q-btn color="primary" label="Clear" @click="newvariation = JSON.parse(JSON.stringify(newvariationdefault))" no-caps style=" margin-left: 20px;"></q-btn>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </q-dialog>
+      </div>
+      
+    </q-page-container>
+  </q-layout>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@^2.0.0/dist/vue.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quasar@1.12.13/dist/quasar.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quasar@1.12.13/dist/icon-set/fontawesome-v5.umd.min.js"></script>
+<script src="https://kit.fontawesome.com/6bdb17ac79.js" crossorigin="anonymous"></script>
+<script src="//cdn.jsdelivr.net/npm/sortablejs@1.8.4/Sortable.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.20.0/vuedraggable.umd.min.js"></script>
+<script>
+  var maindata
+  const myRequest = new Request('data.json');
+  fetch(myRequest)
+  .then(response => response.json())
+  .then(data => 
+  presxec(data)
+  );
+  function presxec (data) {
+    maindata = data
+    execute()
+  }
+  Quasar.iconSet.set(Quasar.iconSet.fontawesomeV5)
+  function execute () {
+    new Vue({
+      el: '#app',
+      data: {
+        selectedscene: {
+          name: 'scene',
+          ismain: true
+        },
+        newvariation: {
+          title: '',
+          icon: '',
+          toplevel: null,
+          id: null,
+          type: 'icon',
+          color: '',
+          price: null,
+          pricetype: 'variation'
+        },
+        newvariationdefault: {
+          title: '',
+          icon: '',
+          toplevel: null,
+          id: null,
+          type: 'icon',
+          color: '',
+          price: null,
+          pricetype: 'variation'
+        },
+        newtoplevel: {
+          title: '',
+          icon: '',
+          order: 0,
+          id: null
+        },
+        newtopleveldefault: {
+          title: '',
+          icon: '',
+          order: 0,
+          id: null
+        },
+        shopitems: [{
+          id: 999999,
+          title: 'Base Price',
+          price: maindata.baseprice
+        }],
+        krpano: null,
+        splitterModel: 20,
+        vrmode: false,
+        incomingvariations: [],
+        currenthotspotname: '',
+        currenthotspot: {},
+        hotoptions: ['directional', 'information'],
+        tab: 'daynight',
+        isfullscreen: false,
+        visible: false,
+        variationsdialog: false,
+        scenes: [],
+        currentscene: {},
+        editormode: false,
+        currentscenename: null,
+        keycode: '',
+        cart: false,
+        left: false,
+        dragging: false,
+        right: false,
+        maindata: maindata,
+        maintourscenesdialog: false
+      },
+      mounted() {
+        var vm = this
+        window.app = this
+        window.embedpano({
+          id: 'viewer',
+          swf:"",
+          xml:"tour.xml",
+          target: 'pano',
+          mobilescale:1.0,
+          passQueryParameters: true,
+          focus: false,
+          html5: 'only',
+          onready: vm.krpanoReady
+        })
+        this.shopitems[0].baseprice = this.maindata.baseprice
+        let self = this; 
+        window.addEventListener('keyup', function(ev) {
+          // declared in your component methods
+          self.keycode = self.keycode + '' + ev.key
+          if (self.keycode.indexOf('editor') > -1) {
+            self.myMethod(true)
+          } else if (self.keycode.indexOf('exit') > -1) {
+            self.myMethod(false)
+          }
+        });
+      },
+      computed: {
+        incomingconnections () {
+          return this.maindata.hotspots.filter(x => x.connectionto === this.currentscene.name)
+        },
+        currenthotspots () {
+          let currentscene = this.currentscene.connectedscene
+          return this.maindata.hotspots.filter(x => x.scene === currentscene)
+        },
+        normalscenes () {
+          return this.maindata.scenes.filter(x => !x.picked)
+        },
+        maindatascenes () {
+          return this.maindata.scenes.filter(x => x.picked).map(item => ({label: item.title, value: item.name}))
+        },
+        toplevelcalc () {
+          return this.maindata.toplevel.sort((a, b) => a.order < b.order);
+        },
+        calctoplevel () {
+          return this.maindata.toplevel.map(item => ({label: item.title, value: item.id}))
+        },
+        returncurrentvariations () {
+          return this.maindata.variations
+        },
+        calculatedscenes () {
+          return this.maindata.scenes.filter(x => x.picked).map(item => ({scene: item.name, url: item.thumburl, targetview: { ath: 0, atv: 0, fov: 90 }}))
+        },
+        products () {
+          let items = []
+          if (!('variations' in this.currentscene)) {
+            return []
+          }
+          for (let index = 0; index < this.currentscene.variations.length; index++) {
+            const element = this.currentscene.variations[index]
+            if (this.maindata.variations.filter(x => x.id === element)[0].price && Number(this.maindata.variations.filter(x => x.id === element)[0].price) !== 0) {
+              items.push(this.maindata.variations.filter(x => x.id === element)[0])
+            }
+          }
+          return items
+        }
+      },
+      watch: {
+        currentscenename: function (newscene, oldscene) {
+          if (newscene) {
+            let index = this.maindata.scenes.findIndex(x => x.name === newscene)
+            this.currentscene = this.maindata.scenes[index]
+            let incomingvariations = []
+            let items = this.maindata.scenes.filter(x => x.connectedscene === this.currentscene.connectedscene)
+            for (let index = 0; index < items.length; index++) {
+              const vars= items[index].variations
+              incomingvariations = incomingvariations.concat(vars.filter(x => !(incomingvariations.includes(x))))
+            }
+            this.incomingvariations = incomingvariations
+            const vm = this
+            for (let index = 0; index < this.currenthotspots.length; index++) {
+              const element = this.currenthotspots[index]
+              let str = ''
+              str += 'addhotspot(' + element.name + ');'
+              str += 'set(hotspot[' + element.name + '].url,' + element.url + ');'
+              str += 'set(hotspot[' + element.name + '].distorted,true);'
+              str += 'set(hotspot[' + element.name + '].ath,' + element.ath + ');'
+              str += 'set(hotspot[' + element.name + '].atv,' + element.atv + ');'
+              str += 'set(hotspot[' + element.name + '].rx,' + element.rx + ');'
+              str += 'set(hotspot[' + element.name + '].ry,' + element.ry + ');'
+              str += 'set(hotspot[' + element.name + '].rz,' + element.rz + ');'
+              str += 'set(hotspot[' + element.name + '].width,' + element.width + ');'
+              str += 'set(hotspot[' + element.name + '].height,' + element.height + ');'
+              str += 'set(hotspot[' + element.name + '].scale,1);'
+              // console.log(element.targetview)
+              str += 'set(hotspot[' + element.name + '].onclick,js(app.clicker1(' + element.connectionto + ', ' + element.scene + ');));'
+              this.krpano.call(str)
+            }
+          }
+        },
+        editormode: function(newval, oldval) {
+          if (newval) {
+            for (let index = 0; index < this.currenthotspots.length; index++) {
+              const element = this.currenthotspots[index]
+              let str = ''
+              str += 'set(hotspot[' + element.name + '].ondown,draghotspot(' + element.name + '););'
+              str += 'set(hotspot[' + element.name + '].onup,set(dragging,false););'
+              
+              str += 'set(hotspot[' + element.name + '].onclick,js(app.clickhotspot(' + element.name + ')));'
+              // str += 'addhotspot(' + element.name + ');'
+              // str += 'set(hotspot[' + element.name + '].url,' + element.url + ');'
+              // str += 'set(hotspot[' + element.name + '].distorted,true);'
+              // str += 'set(hotspot[' + element.name + '].ath,' + element.ath + ');'
+              // str += 'set(hotspot[' + element.name + '].atv,' + element.atv + ');'
+              // str += 'set(hotspot[' + element.name + '].width,' + element.width + ');'
+              // str += 'set(hotspot[' + element.name + '].height,' + element.height + ');'
+              // str += 'set(hotspot[' + element.name + '].scale,1);'
+              // str += 'set(hotspot[' + element.name + '].onclick,js(app.clicker1(' + element.connectionto + ')));'
+              this.krpano.call(str)
+            }
+          } else {
+            for (let index = 0; index < this.currenthotspots.length; index++) {
+              const element = this.currenthotspots[index]
+              let str = ''
+              str += 'set(hotspot[' + element.name + '].ondown,"");'
+              str += 'set(hotspot[' + element.name + '].onup,"");'
+              // console.log(element.targetview)
+              str += 'set(hotspot[' + element.name + '].onclick,js(app.clicker1(' + element.connectionto + ', ' + element.scene + ')))'
+              // str += 'addhotspot(' + element.name + ');'
+              // str += 'set(hotspot[' + element.name + '].url,' + element.url + ');'
+              // str += 'set(hotspot[' + element.name + '].distorted,true);'
+              // str += 'set(hotspot[' + element.name + '].ath,' + element.ath + ');'
+              // str += 'set(hotspot[' + element.name + '].atv,' + element.atv + ');'
+              // str += 'set(hotspot[' + element.name + '].width,' + element.width + ');'
+              // str += 'set(hotspot[' + element.name + '].height,' + element.height + ');'
+              // str += 'set(hotspot[' + element.name + '].scale,1);'
+              // str += 'set(hotspot[' + element.name + '].onclick,js(app.clicker1(' + element.connectionto + ')));'
+              this.krpano.call(str)
+            }
+          }
+        }
+      },
+      methods: {
+        closeall (val) {
+          setTimeout(() => {
+            for (let index = 0; index < this.toplevelcalc.length; index++) {
+              const id = this.toplevelcalc[index].id
+              console.log(id, val)
+              if (Number(id) !== Number(val)) {
+                console.log(this.$refs['fab' + id])
+                if (this.$refs['fab' + id]) {
+                  this.$refs['fab' + id][0].hide()
+                }
+              }
+            }
+          }, 100);
+        },
+        entervr () {
+          this.krpano.call('webvr.enterVR();')
+          this.vrmode = true
+        },
+        fullscreen () {
+          let vm = this
+          if (this.isfullscreen) {
+            this.$q.fullscreen.exit()
+            .then(() => { // v1.5.0+
+              vm.isfullscreen = false
+            })
+            .catch(err => { // v1.5.0+
+              // oh, no!!!
+            })
+          } else {
+            this.$q.fullscreen.request()
+            .then(() => { // v1.5.0+
+              // success!
+              vm.isfullscreen = true
+            })
+            .catch(err => { // v1.5.0+
+              console.log(err)
+            })
+          }
+        },
+        addproduct (product) {
+          console.log(product)
+          if (product.pricetype === 'variation' && this.shopitems.filter(x => x.toplevel === product.toplevel && x.pricetype === 'variation').length > 0) {
+            let index = this.shopitems.findIndex(x => x.toplevel === product.toplevel)
+            this.shopitems.splice(index, 1)
+          }
+          this.shopitems.push(product)
+          if (!this.cart) {
+            this.cart = true
+          }
+        },
+        variationlevelcalc (toplevel1) {
+          return this.maindata.variations.filter(x => x.toplevel === toplevel1)
+        },
+        reorder () {
+          for (let index = 0; index < this.maindata.toplevel.length; index++) {
+            this.maindata.toplevel[index].order = index
+          }
+        },
+        deletetoplevel (iid) {
+          let index = this.maindata.toplevel.findIndex(x => x.id === iid)
+          this.maindata.toplevel.splice(index, 1)
+        },
+        deletevariation (iid) {
+          let index = this.maindata.variations.findIndex(x => x.id === iid)
+          this.maindata.variations.splice(index, 1)
+        },
+        removetag (variation) {
+          let index = this.currentscene.variations.findIndex(x => x === variation)
+          this.currentscene.variations.splice(index, 1)
+        },
+        setdefaultview () {
+          console.log('view')
+          let view = this.krpano.get('view')
+          console.log(view)
+          let index = this.maindata.scenes.findIndex(x => x.name === this.currentscenename)
+          this.maindata.scenes[index].starth = view.hlookat
+          this.maindata.scenes[index].startv = view.vlookat
+        },
+        settargetview (incoming) {
+          console.log(incoming)
+          let view = this.krpano.get('view')
+          console.log(view)
+          let index = this.maindata.hotspots.findIndex(x => x.name === incoming.name)
+          this.maindata.hotspots[index].targetview = {
+            ath: view.hlookat,
+            atv: view.vlookat,
+            fov: view.fov
+          }
+        },
+        savejson () {
+          console.log('savejson')
+          var a = document.createElement('a');
+          a.setAttribute('href', 'data:text/plain;charset=utf-8,'+encodeURIComponent(JSON.stringify(this.maindata)));
+          a.setAttribute('download', 'data.json');
+          a.click()
+        },
+        myMethod(state) {
+          console.log('toggle editor mode')
+          this.editormode = state
+          this.keycode = ''
+        },
+        loadscene (name) {
+          this.krpano.call('loadscene(' + name + ')')
+        },
+        sethotspotwidth (spotname, width) {
+          this.krpano.call('set(hotspot[' + spotname + '].width, ' + width + ');')
+        },
+        sethotspotheight (spotname, height) {
+          this.krpano.call('set(hotspot[' + spotname + '].height, ' + height + ');')
+        },
+        transform (x, val) {
+          let spotname = this.currenthotspotname
+          if (x === 'x') {
+            this.krpano.call('set(hotspot[' + spotname + '].rx, ' + val + ');')
+          } else if (x === 'y') {
+            this.krpano.call('set(hotspot[' + spotname + '].ry, ' + val + ');')
+          } else {
+            this.krpano.call('set(hotspot[' + spotname + '].rz, ' + val + ');')
+          }
+        },
+        changethumb () {
+          let spotname = this.currenthotspotname
+          this.krpano.call('set(hotspot[' + spotname + '].url, ' + this.currenthotspot.url + ');')
+        },
+        clickhotspot (name) {
+          this.currenthotspotname = name
+          this.krpano.call('looktohotspot(' + name + ')')
+          this.currenthotspot = this.maindata.hotspots.filter(x => x.name === name)[0]
+        },
+        deletehotspot (hotspot) {
+          let index = this.maindata.hotspots.findIndex(obj => obj.name === hotspot.name)
+          this.maindata.hotspots.splice(index, 1)
+          this.krpano.call('removehotspot(' + hotspot.name + ');')
+        },
+        addahotspot () {
+          if (!this.editormode) {
+            return
+          }
+          var mouseatx = this.krpano.get('mouse.x')
+          var mouseaty = this.krpano.get('mouse.y')
+          var hvs = this.krpano.screentosphere(mouseatx, mouseaty)
+          var d = new Date()
+          var n = d.getTime()
+          var spotname = 'spot' + n
+          var str = ''
+          str += 'addhotspot(' + spotname + ');'
+          str += 'set(hotspot[' + spotname + '].url,hotspot.png);'
+          str += 'set(hotspot[' + spotname + '].distorted,true);'
+          str += 'set(hotspot[' + spotname + '].ath,' + hvs.x + ');'
+          str += 'set(hotspot[' + spotname + '].atv,' + hvs.y + ');'
+          str += 'set(hotspot[' + spotname + '].width,50);'
+          str += 'set(hotspot[' + spotname + '].height,50);'
+          str += 'set(hotspot[' + spotname + '].scale,1);'
+          str += 'set(hotspot[' + spotname + '].ondown,draghotspot(' + spotname + '););'
+          str += 'set(hotspot[' + spotname + '].onup,set(dragging,false););'
+          this.krpano.call(str)
+          var newhotspot = {
+            name: spotname,
+            scene: this.krpano.get('scene[get(xml.scene)].name'),
+            ath: hvs.x,
+            atv: hvs.y,
+            width: 50,
+            height: 50,
+            color: '#30b930',
+            auto: false,
+            url: 'hotspot.png',
+            connectionto: "",
+            targetview: {
+              ath: 0,
+              atv: 0,
+              fov: 90
+            },
+            type: null,
+            content: '',
+            rx: 0,
+            ry: 0,
+            rz: 0
+          }
+          this.maindata.hotspots.push(newhotspot)
+          this.currenthotspotname = spotname
+          this.currenthotspot = this.maindata.hotspots.filter(x => x.name === spotname)[0]
+        },
+        movespot (x, y, z) {
+          this.currenthotspotname = z
+          this.currenthotspot = this.maindata.hotspots.filter(x => x.name === z)[0]
+          this.currenthotspot.ath = x
+          this.currenthotspot.atv = y
+          // var index = this.alldata[this.currentlanguage].data[this.selected_scene_name].hotspots.findIndex(obj => obj.name === this.currenthotspot)
+          // this.alldata[this.currentlanguage].data[this.selected_scene_name].hotspots[index].ath = x
+          // this.alldata[this.currentlanguage].data[this.selected_scene_name].hotspots[index].atv = y
+        },
+        addtoplevel () {
+          if (this.newtoplevel.id) {
+            let index = this.maindata.toplevel.findIndex(x => x.id === this.newtoplevel.id)
+            this.maindata.toplevel[index] = this.newtoplevel
+            this.newtoplevel = JSON.parse(JSON.stringify(this.newtopleveldefault))
+          } else {
+            let obj = this.newtoplevel
+            obj.order = this.maindata.toplevel.length + 1
+            obj.id = this.maindata.toplevel.length + 1
+            this.maindata.toplevel.push(this.newtoplevel)
+            this.newtoplevel = JSON.parse(JSON.stringify(this.newtopleveldefault))
+          }
+        },
+        advancedchecker (t) {
+          console.log(t)
+          let result = false
+          for (let index = 0; index < this.variationlevelcalc(t).length; index++) {
+            if (this.incomingvariations.includes(this.variationlevelcalc(t)[index].id)) {
+              result = true
+            }
+          }
+          return result
+        },
+        clicker1 (name, scene) {
+          console.log('clicker', name, scene)
+          let fromscene = this.maindata.scenes.filter(x => x.name === scene)[0]
+          if (fromscene.picked) {
+            let targetscene = this.maindata.scenes.filter(x => x.connectedscene === name && x.picked)[0].name
+            let view = this.maindata.hotspots.filter(x => x.scene === scene && x.connectionto === name)[0].targetview
+            let type = this.maindata.hotspots.filter(x => x.scene === scene && x.connectionto === name)[0].type
+            if (type === 'information') {
+              this.$q.dialog({
+                title: 'Info',
+                message: vm.maindata.hotspots.filter(x => x.scene === scene && x.connectionto === name)[0].content,
+                html: true
+              }).onOk(() => {
+                // console.log('OK')
+              }).onCancel(() => {
+                // console.log('Cancel')
+              }).onDismiss(() => {
+                // console.log('I am triggered on both OK and Cancel')
+              })
+            } else {
+              this.krpano.call('loadscene(' + targetscene + ', null, MERGE, OPENBLEND(0.5, 0.0, 0.75, 0.05, linear)); lookat(' + view.ath + ',' + view.atv + ',' + view.fov + ');')
+            }
+            return
+          }
+          let scenes = this.maindata.scenes.filter(x => x.connectedscene === name)
+          // console.log(scenes)
+          let number = 0
+          let newname = ''
+          for (let index = 0; index < scenes.length; index++) {
+            let newnumber = 0
+            for (let index2 = 0; index2 < this.currentscene.variations.length; index2++) {
+              if (scenes[index].variations.includes(this.currentscene.variations[index2])) {
+                newnumber ++
+              }
+            }
+            // console.log(newnumber, number, scenes[index].name, newnumber > number)
+            if (newnumber > number && newnumber) {
+              // if (this.currentscene.variations.length < )
+              number = newnumber
+              newname = scenes[index].name
+            } else if (newnumber === number) {
+              if (newnumber === 0) {
+                number = newnumber
+                newname = scenes[index].name
+              }
+            }
+          }
+          let view = this.maindata.hotspots.filter(x => x.scene === scene && x.connectionto === name)[0].targetview
+          let type = this.maindata.hotspots.filter(x => x.scene === scene && x.connectionto === name)[0].type
+          // console.log(view, type)
+          let vm = this
+          if (type === 'information') {
+            this.$q.dialog({
+              title: 'Info',
+              message: vm.maindata.hotspots.filter(x => x.scene === scene && x.connectionto === name)[0].content,
+              html: true
+            }).onOk(() => {
+              // console.log('OK')
+            }).onCancel(() => {
+              // console.log('Cancel')
+            }).onDismiss(() => {
+              // console.log('I am triggered on both OK and Cancel')
+            })
+          } else {
+            this.krpano.call('loadscene(' + newname + ', null, MERGE, OPENBLEND(0.5, 0.0, 0.75, 0.05, linear)); lookat(' + view.ath + ',' + view.atv + ',' + view.fov + ');')
+          }
+        },
+        clicker (item) {
+          console.log(item)
+          let scenes = this.maindata.scenes.filter(x => x.connectedscene === this.currentscene.connectedscene && x.variations.includes(item.id))
+          console.log(scenes)
+          let name = ''
+          let number = 0
+          for (let index = 0; index < scenes.length; index++) {
+            let newnumber = 0
+            for (let index2 = 0; index2 < this.currentscene.variations.length; index2++) {
+              if (scenes[index].variations.includes(this.currentscene.variations[index2])) {
+                newnumber ++
+              }
+            }
+            console.log(newnumber, number, scenes[index].name, newnumber > number)
+            if (newnumber > number && newnumber) {
+              // if (this.currentscene.variations.length < )
+              number = newnumber
+              name = scenes[index].name
+            } else if (newnumber === number) {
+              if (newnumber === 0) {
+                number = newnumber
+                name = scenes[index].name
+              }
+            }
+          }
+          this.krpano.call('loadscene(' + name + ', null, KEEPVIEW, BLEND(1))')
+        },
+        choosevariation () {
+          this.$q.dialog({
+          title: 'Options',
+          message: 'Choose your options:',
+          options: {
+            type: 'checkbox',
+            model: [],
+            // inline: true
+            items: this.maindata.variations.map(item => ({label: item.title + ' | ' + this.maindata.toplevel.filter(x => x.id === item.toplevel)[0].title, value: item.id}))
+          },
+          cancel: true,
+          persistent: true
+        }).onOk(data => {
+          console.log('>>>> OK, received', data)
+          this.currentscene.variations = this.currentscene.variations.concat(data.filter(x => !(this.currentscene.variations.includes(x))))
+        }).onCancel(() => {
+          // console.log('>>>> Cancel')
+        }).onDismiss(() => {
+          // console.log('I am triggered on both OK and Cancel')
+        })
+        },
+        addvariation () {
+          if (this.newvariation.id) {
+            let index = this.maindata.variations.findIndex(x => x.id === this.newvariation.id)
+            this.maindata.variations[index] = this.newvariation
+            this.newvariation = JSON.parse(JSON.stringify(this.newvariationdefault))
+          } else {
+            let obj = this.newvariation
+            obj.id = this.maindata.variations.length + 1
+            this.maindata.variations.push(obj)
+            this.newvariation = JSON.parse(JSON.stringify(this.newvariationdefault))
+          }
+        },
+        editvariation (variation) {
+          this.variation
+        },
+        krpanoReady() {
+          setTimeout(() => {
+            let panoDom = document.getElementById('viewer')
+            this.initkrp(panoDom)
+          }, 500)
+        },
+        initkrp(krDom) {
+          this.krpano = krDom
+          this.visible = true
+          setTimeout(() => {
+            this.getscenes()
+          }, 100);
+        },
+        newscene () {
+          console.log('onnewscene triggered')
+          this.currentscenename = this.krpano.get('scene[get(xml.scene)].name')
+        },
+        getscenes () {
+          if (this.maindata.scenes.length < 1) {
+            console.log('not saved before')
+            let count = this.krpano.get('scene.count')
+            for (let index = 0; index < count; index++) {
+              let object = this.krpano.get('scene[' + index + ']')
+              object.picked = false
+              object.starth = null
+              object.startv = null
+              object.connectedscene = null
+              object.variations = []
+              delete object.content
+              delete object.onstart
+              delete object.havevrimage
+              delete object.thumbx
+              delete object.thumby
+              if (index === 0) {
+                this.currentscenename = object.name
+              }
+              this.maindata.scenes.push(object)
+            }
+            this.currentscenename = this.maindata.scenes[0].name
+          } else {
+            this.currentscenename = this.maindata.scenes[0].name
+          }
+        }
+      }
+    })
+  }
+  function log(x,y,z) {
+    app.movespot(x, y, z)
+  }
+</script>
+</body>
+</html>
